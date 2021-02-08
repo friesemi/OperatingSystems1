@@ -1,0 +1,166 @@
+
+#!/bin/bash
+
+function dimsReal(){
+	data="datafile"			#the following 8 lines check if any arguments are passed and allows for user input or file input
+	if [ "$#" = "0" ]
+	then
+	    cat > "$data"
+	elif [ "$#" = "1" ]
+	then
+	    data=$1
+	fi
+
+	columns=0
+	rows=0
+	while read mat			#loop designed to count the rows by incrementing by one after reading a line
+	do
+		for i in $mat		#nested loop counting characters read in to find number of columns
+		do
+			(( columns++ ))
+		done
+		(( rows++))
+	done < $data
+	columns=$(( $columns/$rows ))	#columns are counted for each row, so the num of columns is divided by num of rows
+}
+
+#this function actually prints dims while dimsReal calculates the dims to be used elsewhere
+function dims(){
+	errorHandleSingle $1 $2
+	dimsReal $1
+	echo "$rows $columns"
+}
+
+
+function transpose(){
+	errorHandleSingle $1 $2
+	dimsReal $1
+
+	TMP="tempFile"
+	TMP1="tempRowFile"
+	TMP2="tempFinal"
+	mat=$data
+	i=1
+
+	while [ $i -le $columns ]			#cuts out column and changes newlines to tabs to transpose each column
+	do
+		cut -f $i $mat > $TMP
+		cat $TMP | tr '\n' '\t' > $TMP1
+		echo >> $TMP1
+		head -c -2 $TMP1 >> $TMP2
+		echo >> $TMP2
+		((i++))
+	done
+	
+	cat $TMP2
+	rm temp*
+}	
+
+
+function mean(){
+	errorHandleSingle $1 $2
+	dimsReal $1
+
+	TMP="tempFile"
+	TMP1="tempRow"
+	TMP2="tempMean"
+	TMP3="tempFinal"
+
+	mean=0
+	i=1
+	mat=$data
+
+	while [ $i -le $columns ]					#main loop singles out column and moves it to temp file to sum up
+	do
+		cut -f $i $mat > $TMP
+		while read num
+		do
+			mean=$(( mean+$num ))				#calculates the overall sum of a column
+		done < $TMP
+
+		mean=$(( (mean+($rows/2)*((mean>0)*2-1))/$rows ))	#rounds the answer away from 0
+		echo "$mean" >> $TMP1
+		mean=0
+		(( i++ ))
+	done
+
+	cat $TMP1 | tr '\n' '\t' >> $TMP2				#replaces the newlines with spaces
+	echo >> $TMP2
+	head -c -2 $TMP2 >> $TMP3					#removes trailing tabs
+	echo >> $TMP3
+
+	cat $TMP3
+	rm temp*
+}
+
+
+function add(){
+	errorHandleDouble $1 $2 $3
+	if [[ $(dims $1) != $(dims $2) ]]	#check if the dims are equal
+	then
+		echo throwing error 1>&2
+		exit 1
+	fi
+	dimsReal $1
+
+	add1=0
+	add2=0
+	i=1
+	j=1
+	TMP="tempAdded"
+	TMP1="tempSpaced"
+	TMP2="tempFinal"
+
+	while [ $i -le $rows ]
+	do
+		add1=$(head -$i $1 | tail -1)
+		add2=$(head -$i $2 | tail -1)
+
+		while [ $j -le $columns ]
+		do
+			echo $(($(cut -d ' ' -f $j <<< $add1)+$(cut -d ' ' -f $j <<< $add2))) >> $TMP
+			cat $TMP | tr '\n' '\t' > $TMP1
+			echo >> $TMP1
+			((j++))
+		done
+		
+		head -c -2 $TMP1 >> $TMP2
+		echo >> $TMP2
+
+		j=1
+		> $TMP
+		((i++))
+	done < $1
+
+	cat -A $TMP2
+	rm temp*
+}
+
+
+function multiply(){
+	errorHandleDouble $1 $2 $3
+	
+}
+
+
+
+function errorHandleSingle(){
+	if [[ $# -eq 0 ]]
+	then
+		return
+	elif [[ ! -f $1 ]] || [[ $# -gt 1 ]]
+	then
+		echo error is thrown 1>&2
+		exit 1
+	fi
+}
+
+function errorHandleDouble(){
+	if [[ $# -ne 2 ]] || [[ ! -f $1 ]] || [[ ! -f $2 ]]
+	then
+		echo throwing error 1>&2
+		exit 1
+	fi
+}
+
+$1 "${@:2}"

@@ -1,0 +1,35 @@
+#!/bin/bash
+
+TMP="tempAdded"
+TMP1="tempSpaced"
+TMP2="tempFinal"
+add1=0
+add2=0
+i=1
+j=1
+
+while [ $i -le 3 ]						#replace 3 with num rows
+do
+	add1=$(head -$i $1 | tail -1)
+	add2=$(head -$i $2 | tail -1)
+	while [ $j -le 4 ]					#replace 5 with num columns
+	do
+		echo $(($(cut -d ' ' -f $j <<< $add1)+$(cut -d ' ' -f $j <<< $add2))) >> $TMP
+		cat $TMP | tr '\n' '\t' > $TMP1
+		echo >> $TMP1
+		((j++))
+	done
+	cat $TMP | tr '\n' '\t' > $TMP1
+	echo >> $TMP1
+	head -c -2 $TMP1 >> $TMP2
+	echo >> $TMP2
+	
+	j=1
+	> $TMP
+	((i++))
+done < $1 
+
+cat -A $TMP2
+rm temp*
+
+

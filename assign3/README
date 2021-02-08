@@ -1,0 +1,2 @@
+To compile the shell, simply compile smallsh.c.
+use the command: gcc smallsh.c -o smallsh

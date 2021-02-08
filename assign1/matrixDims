@@ -1,0 +1,16 @@
+#!/bin/bash
+	columns=0
+	rows=0
+#	while read mat
+#	do
+#		for i in $mat
+#		do
+#			(( rows++ ))
+#		done
+#		(( columns++))
+#	done < $1
+	wc -l $1 > $rows
+	wc -w $1 > $columns
+	columns=$(( $columns/$rows))
+	echo "$(( $columns/$rows )) $rows"
+

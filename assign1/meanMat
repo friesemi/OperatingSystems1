@@ -1,0 +1,29 @@
+#!/bin/bash
+
+
+#mean of a matrix
+#errorhandle here
+
+TMP="tempRow"
+TMP1="tempMean"
+
+mean=0
+j=1
+mat=$1
+
+while [ $j -le 5 ]	#change for num of columns
+do
+	cut -f $j $mat > $TMP
+	
+	while read num
+	do
+		mean=$(( mean+$num ))
+	done < $TMP
+	
+	mean=$(( (mean+(3/2)*((mean>0)*2-1))/3 ))	#replace 3 with number of rows
+	echo "$mean" >> $TMP1
+	mean=0
+	((j++))
+done
+
+cat $TMP1

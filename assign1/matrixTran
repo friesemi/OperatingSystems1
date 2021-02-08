@@ -1,0 +1,20 @@
+#!/bin/bash
+
+TMP="tempFile"
+TMP1="tempCol"
+TMP2="tempRow"
+mat=$1
+
+cut -f 1 $mat > $TMP
+echo result of cut are:
+cat $TMP
+
+cat $TMP | tr '\n' '\t' >> $TMP1
+echo >> $TMP1
+echo newlines turned to tabs:
+cat -A $TMP1
+
+head -c -2 $TMP1 >> $TMP2
+echo >> $TMP2
+echo without the tabs:
+cat -A $TMP2

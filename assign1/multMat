@@ -1,0 +1,51 @@
+#!/bin/bash
+
+TMP="tempRow"
+TMP1="tempCol"
+TMP2="tempMult"
+TMP3="tempFinal"
+TMP4="tempNoTabs"
+
+sum=0
+row=0
+i=1
+j=1
+k=1
+
+while [ $i -le 3 ]			#the 2 is the number of columns of the second matrix
+do
+	row=$(head -$i $1 | tail -1)	#get the according row
+	echo row is $row
+	
+	while [ $j -le 4 ]		#the 3 is the number of rows of the first matrix
+	do
+		cut -f $j $2 > $TMP	#get the according column	
+		cat $TMP | tr '\n' '\t' >> $TMP1
+		echo >> $TMP1
+		
+		cat $TMP1
+		
+		while [ $k -le 2 ]	#the 3 is the number of rows of first matrix
+		do
+			sum=$(($(cut -d ' ' -f $k <<< $row)*$(cut -f $k $TMP1)+$sum))
+			((k++))
+		done
+		
+		> $TMP1
+		echo $sum >> $TMP2
+		sum=0
+		k=1
+		((j++))	
+	done
+	
+	cat $TMP2 | tr '\n' '\t' > $TMP3
+	echo >> $TMP3
+	head -c -2 $TMP3 >> $TMP4
+	echo >> $TMP4 	
+	> $TMP2
+	j=1
+	((i++))
+done
+
+cat $TMP4
+rm temp*

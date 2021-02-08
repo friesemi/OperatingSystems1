@@ -1,0 +1,235 @@
+
+#!/bin/bash
+
+#this function calculates the dimensions of the matrix, but does not print them so as to use the dimensions in other functions
+function dimsReal(){
+	data="datafile"			#the following 8 lines check if any arguments are passed and allows for user input or file input
+	if [ "$#" = "0" ]
+	then
+	    cat > "$data"
+	elif [ "$#" = "1" ]
+	then
+	    data=$1
+	fi
+
+	columns=0
+	rows=0
+	while read mat			#loop designed to count the rows by incrementing by one after reading a line
+	do
+		for i in $mat		#nested loop counting characters read in to find number of columns
+		do
+			(( columns++ ))
+		done
+		(( rows++))
+	done < $data
+	columns=$(( $columns/$rows ))	#columns are counted for each row, so the num of columns is divided by num of rows
+}
+
+
+#this function actually prints dims while dimsReal calculates the dims to be used elsewhere
+function dims(){
+	errorHandleSingle $1 $2
+	dimsReal $1
+	echo "$rows $columns"
+}
+
+
+#transpose the given matrix
+function transpose(){
+	errorHandleSingle $1 $2
+	dimsReal $1
+
+	TMP="tempFile"
+	TMP1="tempRowFile"
+	TMP2="tempFinal"
+	mat=$data
+	i=1
+
+	while [ $i -le $columns ]			#cuts out column and changes newlines to tabs to transpose each column
+	do
+		cut -f $i $mat > $TMP
+		cat $TMP | tr '\n' '\t' > $TMP1		#convert the newlines into tabs, this is used throughout the script
+		echo >> $TMP1
+		head -c -2 $TMP1 >> $TMP2		#remove trailing tabs, also used throughout script
+		echo >> $TMP2
+		((i++))
+	done
+	
+	cat $TMP2
+	rm temp*
+}	
+
+
+#calculates the mean of each column of a matrix and prints it to the screen
+function mean(){
+	errorHandleSingle $1 $2
+	dimsReal $1
+
+	TMP="tempFile"
+	TMP1="tempRow"
+	TMP2="tempMean"
+	TMP3="tempFinal"
+
+	mean=0
+	i=1
+	mat=$data
+
+	while [ $i -le $columns ]					#main loop singles out column and moves it to temp file to sum up
+	do
+		cut -f $i $mat > $TMP
+
+		while read num
+		do
+			mean=$(( mean+$num ))				#calculates the overall sum of a column
+		done < $TMP
+
+		mean=$(( (mean+($rows/2)*((mean>0)*2-1))/$rows ))	#rounds the answer away from 0
+		echo "$mean" >> $TMP1
+		mean=0
+		(( i++ ))
+	done
+
+	cat $TMP1 | tr '\n' '\t' >> $TMP2				#replaces the newlines with spaces
+	echo >> $TMP2
+	head -c -2 $TMP2 >> $TMP3					#removes trailing tabs
+	echo >> $TMP3
+
+	cat $TMP3
+	rm temp*
+}
+
+
+#adds two matrices of equal dimension
+function add(){
+	errorHandleDouble $1 $2 $3
+	if [[ $(dims $1) != $(dims $2) ]]			#check if the dims are equal
+	then
+		echo throwing error 1>&2
+		exit 1
+	fi
+	dimsReal $1
+
+	add1=0
+	add2=0
+	i=1
+	j=1
+	TMP="tempAdded"
+	TMP1="tempSpaced"
+	TMP2="tempFinal"
+
+	while [ $i -le $rows ]					#first while loop singles out a corresonding line from each matrix
+	do
+		add1=$(head -$i $1 | tail -1)			#commands to get the single line, gets immediate row in next iteration of loop
+		add2=$(head -$i $2 | tail -1)
+
+		while [ $j -le $columns ]			#second while loop gets individual values, sums them, and moves them to a temp file
+		do
+			echo $(($(cut -d ' ' -f $j <<< $add1)+$(cut -d ' ' -f $j <<< $add2))) >> $TMP
+			cat $TMP | tr '\n' '\t' > $TMP1
+			echo >> $TMP1
+			((j++))
+		done
+		
+		head -c -2 $TMP1 >> $TMP2
+		echo >> $TMP2
+
+		j=1						#reset j and empty out TMP to avoid double adding/repeating values
+		> $TMP
+		((i++))
+	done < $1
+
+	cat $TMP2
+	rm temp*
+}
+
+
+#multiply two matrices together
+function multiply(){
+	errorHandleDouble $1 $2 $3
+
+	dimsReal $1					#get dimensions of both matrices to use for loops
+	row1=$rows
+	col1=$columns
+
+	dimsReal $2
+	row2=$rows
+	col2=$columns
+
+	if [[ $col1 -ne $row2 ]]
+ 	then
+		echo throwing error 1>&2
+		exit 1
+	fi
+		
+	TMP="tempRow"
+	TMP1="tempCol"
+	TMP2="tempMult"
+	TMP3="tempFinal"
+	TMP4="tempNoTabs"
+
+	sum=0
+	row=0
+	i=1
+	j=1
+	k=1
+
+	while [ $i -le $row1 ]                      	#first loop gets the row of te first matrix to multiply across columns
+	do
+	        row=$(head -$i $1 | tail -1)        	#get the according row from first matrix
+	
+	        while [ $j -le $col2 ]              	#second loop gets column from second matrix to be multiplied
+	        do
+	                cut -f $j $2 > $TMP         	#get the according column from second matrix
+	                cat $TMP | tr '\n' '\t' >> $TMP1
+	                echo >> $TMP1
+
+	                while [ $k -le $row2 ]          #third loop multiplies corresponding values and adds them to total sum
+	                do
+        	                sum=$(($(cut -d ' ' -f $k <<< $row)*$(cut -f $k $TMP1)+$sum))
+        	                ((k++))
+               	done
+
+                > $TMP1					#reset TMP1, sum, and k to avoid weird appending
+                echo $sum >> $TMP2
+                sum=0
+                k=1
+                ((j++))
+        done
+
+        cat $TMP2 | tr '\n' '\t' > $TMP3
+        echo >> $TMP3
+	head -c -2 $TMP3 >> $TMP4			#remove trailing tabs
+        echo >> $TMP4
+        j=1						#reset j and TMP2 to avoid weird appending
+        > $TMP2
+        ((i++))
+done
+
+cat $TMP4
+rm temp*
+}
+
+
+#errorhandling function for functions requiring only one matrix
+function errorHandleSingle(){
+	if [[ $# -eq 0 ]]
+	then
+		return
+	elif [[ ! -f $1 ]] || [[ $# -gt 1 ]]
+	then
+		echo error is thrown 1>&2
+		exit 1
+	fi
+}
+
+
+#errorhandling function for functions with two matrices
+function errorHandleDouble(){
+	if [[ $# -ne 2 ]] || [[ ! -f $1 ]] || [[ ! -f $2 ]]
+	then
+		echo throwing error 1>&2
+		exit 1
+	fi
+}
+
+$1 "${@:2}"
